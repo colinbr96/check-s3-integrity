@@ -15,7 +15,7 @@ Check S3 object integrity against a local file.
 
    `pip -V`
 
-   It should contain `check-s3-integrity\venv` in the path.
+   It should contain `check-s3-integrity/venv` in the path.
 
 4. Install dependencies:
 
@@ -31,5 +31,5 @@ python check_s3_integrity.py --help
 Example:
 
 ```sh
-python check_s3_integrity.py --bucket MyFiles --key Backup.zip --local-file "C:/Documents/Backup.zip"
+python check_s3_integrity.py --bucket MyFiles --key Backup.zip --local-file "/tmp/Backup.zip"
 ```
