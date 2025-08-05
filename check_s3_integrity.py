@@ -91,7 +91,7 @@ def main():
         s3_etag = json.loads(s3_first_part_metadata['ETag'])
         s3_object_size = int(s3_first_part_metadata['ContentRange'].split('/')[1])
         s3_display_size = get_human_readable_size(s3_object_size)
-        s3_total_parts = s3_first_part_metadata['PartsCount']
+        s3_total_parts = s3_first_part_metadata.get('PartsCount', 1)
         s3_part_size = s3_first_part_metadata['ContentLength']
         s3_part_display_size = get_human_readable_size(s3_part_size)
 
