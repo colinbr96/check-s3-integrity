@@ -50,8 +50,8 @@ def get_etag_of_local_file(local_file_path: str, chunk_size: int, local_file_siz
                 if not data:
                     break
                 md5 = hashlib.md5(data)
-                print_progress_bar(f.tell(), local_file_size, msg='Calculating ETag')
                 md5s.append(md5)
+                print_progress_bar(f.tell(), local_file_size, msg='Calculating ETag')
     except KeyboardInterrupt:
         print("\nExiting...")
         sys.exit(1)
@@ -74,29 +74,32 @@ def parse_args():
 def main():
     args = parse_args()
 
+    # Get local file size and ETag
     try:
         local_file_size = get_size_of_local_file(args.local_file)
-        print(f"Local File:      {args.local_file}")
-        print(f"Local File Size: {local_file_size} bytes")
+        local_display_size = get_human_readable_size(local_file_size)
+        print(f"Local File:         {args.local_file}")
+        print(f"Local File Size:    {local_file_size} bytes ({local_display_size})")
         print()
     except FileNotFoundError:
         print(f"Local file not found: '{args.local_file}'")
         sys.exit(1)
 
+    # Get S3 object metadata
     try:
-        first_part_metadata = get_object_part_head(args.bucket, args.key, 1)
-        etag = json.loads(first_part_metadata['ETag'])
-        object_size = int(first_part_metadata['ContentRange'].split('/')[1])
-        display_size = get_human_readable_size(object_size)
-        total_parts = first_part_metadata['PartsCount']
-        part_size = first_part_metadata['ContentLength']
+        s3_first_part_metadata = get_object_part_head(args.bucket, args.key, 1)
+        s3_etag = json.loads(s3_first_part_metadata['ETag'])
+        s3_object_size = int(s3_first_part_metadata['ContentRange'].split('/')[1])
+        s3_display_size = get_human_readable_size(s3_object_size)
+        s3_total_parts = s3_first_part_metadata['PartsCount']
+        s3_part_size = s3_first_part_metadata['ContentLength']
+        s3_part_display_size = get_human_readable_size(s3_part_size)
 
-        print(f"S3 Object:       s3://{args.bucket}/{args.key}")
-        print(f"ETag:            {etag}")
-        print(f"Object Size:     {object_size} bytes")
-        print(f"Display Size:    {display_size}")
-        print(f"Total Parts:     {total_parts}")
-        print(f"Part Size:       {part_size} bytes")
+        print(f"S3 Object:          s3://{args.bucket}/{args.key}")
+        print(f"ETag:               {s3_etag}")
+        print(f"Object Size:        {s3_object_size} bytes ({s3_display_size})")
+        print(f"Total Parts:        {s3_total_parts}")
+        print(f"Part Size:          {s3_part_size} bytes ({s3_part_display_size})")
         print()
     except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] == '404':
@@ -105,13 +108,14 @@ def main():
             print(f"Error fetching S3 object metadata: {e}")
         sys.exit(1)
 
-    if local_file_size != object_size:
-        print(f"Size mismatch: Local file size {local_file_size} bytes, S3 object size {object_size} bytes.")
+    # Compare local file with S3 object
+    if local_file_size != s3_object_size:
+        print(f"Size mismatch: Local file size {local_file_size} bytes, S3 object size {s3_object_size} bytes.")
         sys.exit(1)
 
-    local_etag = get_etag_of_local_file(args.local_file, part_size, local_file_size)
-    if local_etag != etag:
-        print(f"ETag mismatch: Local file ETag: {local_etag}, S3 object ETag: {etag}")
+    local_etag = get_etag_of_local_file(args.local_file, s3_part_size, local_file_size)
+    if local_etag != s3_etag:
+        print(f"ETag mismatch: Local file ETag: {local_etag}, S3 object ETag: {s3_etag}")
         sys.exit(1)
 
     print("Integrity check passed. Local file matches S3 object.")
